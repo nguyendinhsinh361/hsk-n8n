@@ -1,0 +1,9 @@
+google:drive/trigger/data
+
+google:sheet#dowloads:19C3tB3RmfHGvzzCRvYDHlWVOnTzRFLqvguw_enGJhEw$0
+
+Ghi chú: Update URI Goolge Sheet API
+
+chmod +x n8n/setup.sh 
+cd ~/mcp-n8n/n8n
+./setup.sh

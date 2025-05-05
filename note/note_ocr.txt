@@ -1,0 +1,14 @@
+brew install tesseract
+brew install tesseract-lang 
+
+# Xử lý tất cả file PDF trong một thư mục
+python3 pdf_to_word.py data --folder
+
+# Chỉ định đường dẫn đầu ra cho file Excel
+python3 pdf_to_word.py data --folder --output ket_qua.xlsx
+
+# Sử dụng OCR để cải thiện chất lượng
+python3 pdf_to_word.py data --folder --ocr
+
+# Chỉ xử lý các file PDF có tên bắt đầu bằng "doc"
+python3 pdf_to_word.py data --folder --pattern "doc*.pdf"

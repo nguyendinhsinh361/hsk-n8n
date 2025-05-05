@@ -1,0 +1,17 @@
+# n8n related files
+/n8n
+n8n-*
+**/n8n/**
+note/note_n8n.txt
+
+# Python related
+__pycache__/
+*/__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+
+# OS related
+.DS_Store 

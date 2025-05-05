@@ -1,0 +1,151 @@
+import json
+import os
+from datetime import datetime
+import re
+from typing import List, Optional
+import ast
+
+from pydantic import conset
+from app.cmd.split_audio import EnhancedAudioSplitter, download_from_drive
+
+class AudioService:
+    def __init__(self):
+        self.json_output_path = "app/data/mapping/mapping.json"
+        # Đảm bảo thư mục mapping tồn tại
+        os.makedirs(os.path.dirname(self.json_output_path), exist_ok=True)
+    
+    def split_audio(self, body):
+        # Kiểm tra xem file JSON đã tồn tại chưa
+        results = []
+        existing_mapping = {}
+        audio_mapping = []
+        if os.path.exists(self.json_output_path):
+            try:
+                with open(self.json_output_path, 'r', encoding='utf-8') as json_file:
+                    audio_mapping = json.load(json_file)
+                    # Tạo dictionary để dễ dàng tìm kiếm theo local_path
+                    existing_mapping = {item["local_path"]: item for item in audio_mapping}
+            except Exception as e:
+                print(f"Lỗi khi đọc file JSON hiện có: {str(e)}")
+                # Nếu có lỗi, khởi tạo lại danh sách trống
+                audio_mapping = []
+        question_audios = [{
+            "field": "G_audio",
+            "key": f'{body["id"]}_{body["exam_code"]}_{body["kind"]}_G_audio',
+            "link": body["G_audio"],
+            "timestamps": re.sub('）', ')', body["G_audio_time_split"].strip())
+        }]
+        for index in range(5):
+            question_audios.append({
+                "field": f'Q_audio_{index+1}',
+                "key": f'{body["id"]}_{body["exam_code"]}_{body["kind"]}_Q_audio_{index+1}',
+                "link": body[f"Q_audio_{index+1}"],
+                "timestamps": re.sub('）', ')', body[f"Q_audio_{index+1}_time_split"].strip())
+            })
+        
+        for index in range(5):
+            question_audios.append({
+                "field": f'A_audio_{index+1}',
+                "key": f'{body["id"]}_{body["exam_code"]}_{body["kind"]}_A_audio_{index+1}',
+                "link": body[f"A_audio_{index+1}"],
+                "timestamps": re.sub('）', ')', body[f"A_audio_{index+1}_time_split"].strip())
+            })
+        
+        question_audios_raw = [
+        {
+            "field": item["field"],
+            "key": item["key"],
+            "link": item["link"],
+            "timestamps": [ast.literal_eval(item['timestamps'])],
+        } for item in question_audios 
+            if item['link'] and item['timestamps']
+        ]
+        
+        # Thiết lập thư mục đầu ra
+        folder_path = None
+        if folder_path is None:
+            folder_path = "app/data"
+        
+        # Tạo các thư mục cần thiết
+        downloads_folder = os.path.join(folder_path, "downloads/audio_extract/")
+        output_folder = os.path.join(folder_path, "split/")
+        os.makedirs(downloads_folder, exist_ok=True)
+        os.makedirs(output_folder, exist_ok=True)
+        
+        # Xử lý file âm thanh
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Tạo dictionary để lưu trữ link và đường dẫn file đã tải
+        downloaded_links = {}
+        
+        for tmp in question_audios_raw:
+            if tmp["link"] is not None:
+                # Kiểm tra xem link này đã được tải trước đó chưa
+                if tmp["link"] in downloaded_links:
+                    audio_path = downloaded_links[tmp["link"]]
+                    print(f"Sử dụng file đã tải: {audio_path}")
+                else:
+                    # Lấy tên file từ link hoặc sử dụng tên mặc định
+                    file_name = f"audio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3"
+                    
+                    # Tải file từ Google Drive
+                    print(f"Đang tải file từ Google Drive...")
+                    audio_path = download_from_drive(tmp["link"], downloads_folder)
+                    print(f"Đã tải file thành công: {audio_path}")
+                    
+                    # Lưu vào dictionary để tái sử dụng
+                    downloaded_links[tmp["link"]] = audio_path
+            else:
+                raise ValueError("Cần cung cấp audio_link")
+            
+            # print(1111, audio_path)
+            # Khởi tạo splitter
+            splitter = EnhancedAudioSplitter(audio_path)
+
+            # Cắt audio
+            saved_files = splitter.split_audio(
+                timestamps=tmp["timestamps"],
+                file_format='mp3', 
+                filename=tmp["key"],
+                output_directory=output_folder
+            )
+            
+            # Thêm thông tin vào kết quả
+            for i, segment_file in enumerate(saved_files):
+                if i < len(tmp["timestamps"]):
+                    # Kiểm tra xem segment_file đã tồn tại trong mapping chưa
+                    if segment_file in existing_mapping:
+                        # Cập nhật bản ghi hiện có
+                        existing_item = existing_mapping[segment_file]
+                        existing_item["original_link"] = tmp["link"]
+                        existing_item["timestamp"] = str(tmp["timestamps"][i])
+                        existing_item["key"] = tmp["key"]  # Thêm trường key
+                        # Lưu giá trị updated_at hiện tại vào latest_updated_at
+                        if "updated_at" in existing_item:
+                            existing_item["latest_updated_at"] = existing_item["updated_at"]
+                        # Cập nhật updated_at thành thời gian hiện tại
+                        existing_item["updated_at"] = current_time
+                    else:
+                        # Tạo bản ghi mới
+                        new_item = {
+                            "key": tmp["key"],
+                            "original_link": tmp["link"],
+                            "local_path": segment_file,
+                            "timestamp": str(tmp["timestamps"][i]),
+                            "created_at": current_time,
+                            "updated_at": current_time,
+                            "latest_updated_at": None  # Ban đầu là None vì chưa có cập nhật trước đó
+                        }
+                        audio_mapping.append(new_item)
+                        existing_mapping[segment_file] = new_item
+            
+            results.extend(saved_files)
+        
+        # Lưu kết quả vào file JSON
+        with open(self.json_output_path, 'w', encoding='utf-8') as json_file:
+            json.dump(audio_mapping, json_file, ensure_ascii=False, indent=2)
+        
+        print(f"Đã lưu thông tin ánh xạ audio vào file: {self.json_output_path}")
+        return {
+            tmp["field"]: f'{tmp["key"]}.mp3' if tmp["link"] and tmp["timestamps"] else None for tmp in question_audios
+        }

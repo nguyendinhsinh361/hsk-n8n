@@ -1,0 +1,6 @@
+Authtoken saved to configuration file: /Users/nguyendinhsinh/Library/Application Support/ngrok/ngrok.yml
+ngrok http 5678
+ngrok http 5678 --subdomain=n8n-workspace
+
+ps aux | grep ngrok
+killall ngrok
