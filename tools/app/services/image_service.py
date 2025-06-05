@@ -143,6 +143,7 @@ class ImageService:
         else:
             # Đảm bảo output_path có đuôi .webp
             output_path = os.path.splitext(output_path)[0] + ".webp"
+        # return 0, output_path
         
         # Tạo thư mục đầu ra nếu chưa tồn tại
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -267,3 +268,102 @@ class ImageService:
         return {
             tmp["field"]: [tmp_img.split("/")[-1] for tmp_img in tmp["value"]] if tmp["value"] and tmp["link"] else None for tmp in question_images
         }
+        
+    def resize_uploaded_image(self, file_path, output_dir="app/data/uploads/resized", target_kb=100, 
+                              width=None, height=None, quality_start=85, min_quality=20, min_scale=0.3):
+        """
+        Thay đổi kích thước một hình ảnh đã tải lên
+        
+        :param file_path: Đường dẫn đến file hình ảnh đầu vào
+        :param output_dir: Thư mục để lưu file đã resize
+        :param target_kb: Kích thước mục tiêu tính bằng KB
+        :param width: Chiều rộng mới (nếu None, giữ tỷ lệ dựa trên chiều cao)
+        :param height: Chiều cao mới (nếu None, giữ tỷ lệ dựa trên chiều rộng)
+        :param quality_start: Chất lượng ban đầu (1-100)
+        :param min_quality: Chất lượng tối thiểu trước khi thay đổi kích thước
+        :param min_scale: Tỷ lệ thu nhỏ tối thiểu
+        :return: Đường dẫn đến file đã resize và thông tin kích thước
+        """
+        try:
+            # Đảm bảo thư mục đầu ra tồn tại
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Mở ảnh
+            img = Image.open(file_path)
+            
+            # Lấy kích thước ban đầu
+            original_size = os.path.getsize(file_path) // 1024
+            original_width, original_height = img.size
+            
+            # Tạo đường dẫn đầu ra
+            filename = os.path.basename(file_path)
+            name, ext = os.path.splitext(filename)
+            output_path = os.path.join(output_dir, f"{name}.webp")
+            
+            # Nếu cần resize cụ thể
+            if width or height:
+                new_width = width or int(original_width * height / original_height)
+                new_height = height or int(original_height * width / original_width)
+                img = img.resize((new_width, new_height), Image.LANCZOS)
+            
+            # Nếu ảnh đầu vào đã nhỏ hơn kích thước mục tiêu và không cần resize cụ thể
+            if original_size <= target_kb and not (width or height):
+                img.save(output_path, format="WEBP", quality=quality_start)
+                final_size = os.path.getsize(output_path) // 1024
+                return {
+                    'path': output_path,
+                    'original_size': original_size,
+                    'resized_size': final_size,
+                    'original_dimensions': f"{original_width}x{original_height}",
+                    'resized_dimensions': f"{img.width}x{img.height}"
+                }
+            
+            # Thử các mức chất lượng khác nhau
+            quality = quality_start
+            current_size = original_size
+            
+            while True:
+                img.save(output_path, format="WEBP", quality=quality)
+                
+                current_size = os.path.getsize(output_path) // 1024
+                
+                if current_size <= target_kb or quality <= min_quality:
+                    break
+                    
+                quality -= 10
+            
+            # Nếu vẫn lớn hơn kích thước mục tiêu, thay đổi kích thước vật lý
+            if current_size > target_kb and not (width or height):
+                current_width, current_height = img.size
+                scale_factor = 0.9  # Giảm 10% mỗi lần
+                
+                while current_size > target_kb and scale_factor >= min_scale:
+                    new_width = int(current_width * scale_factor)
+                    new_height = int(current_height * scale_factor)
+                    
+                    resized_img = img.resize((new_width, new_height), Image.LANCZOS)
+                    resized_img.save(output_path, format="WEBP", quality=quality)
+                    
+                    current_size = os.path.getsize(output_path) // 1024
+                    
+                    if current_size <= target_kb:
+                        img = resized_img
+                        break
+                        
+                    scale_factor -= 0.1
+            
+            # Lấy kích thước cuối cùng của ảnh đã resize
+            final_img = Image.open(output_path)
+            
+            return {
+                'path': output_path,
+                'original_size': original_size,
+                'resized_size': current_size,
+                'original_dimensions': f"{original_width}x{original_height}",
+                'resized_dimensions': f"{final_img.width}x{final_img.height}",
+                'quality': quality
+            }
+            
+        except Exception as e:
+            print(f"Lỗi khi resize ảnh: {str(e)}")
+            raise e

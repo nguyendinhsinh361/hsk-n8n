@@ -5,3 +5,9 @@ http://192.168.10.90:8000/docs
 chmod +x structure.txt
 docker build -t tools .
 docker run -d  -p 8000:8000 --name tools tools
+
+conda create -n mcp-n8n python=3.11 -y
+conda activate mcp-n8n
+conda deactivate
+conda env remove --name mcp-n8n
+/opt/anaconda3/envs/mcp-n8n/bin/python

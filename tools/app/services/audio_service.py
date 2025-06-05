@@ -14,6 +14,29 @@ class AudioService:
         # Đảm bảo thư mục mapping tồn tại
         os.makedirs(os.path.dirname(self.json_output_path), exist_ok=True)
     
+    def check_and_fix_time_format(self, input_string):
+        input_string = re.sub('）', ')', input_string.strip())
+        # Mẫu regex để kiểm tra format ("HH:MM:SS", "HH:MM:SS")
+        correct_pattern = r'\("(\d{2}:\d{2}:\d{2})", "(\d{2}:\d{2}:\d{2})"\)'
+        
+        # Kiểm tra xem đã đúng format chưa
+        if re.match(correct_pattern, input_string):
+            # print(f"Format đúng: {input_string}")
+            return input_string
+        
+        # Trích xuất các giá trị thời gian từ chuỗi đầu vào
+        time_pattern = r'"(\d{2}:\d{2}:\d{2})'
+        times = re.findall(time_pattern, input_string)
+        
+        if len(times) == 2:
+            # Format đúng: ("00:08:07", "00:08:25")
+            correct_format = f'("{times[0]}", "{times[1]}")'
+            # print(f"Format sai, đã sửa: {input_string} -> {correct_format}")
+            return correct_format
+        
+        # print(f"Không thể sửa format: {input_string}")
+        return input_string
+    
     def split_audio(self, body):
         # Kiểm tra xem file JSON đã tồn tại chưa
         results = []
@@ -31,24 +54,24 @@ class AudioService:
                 audio_mapping = []
         question_audios = [{
             "field": "G_audio",
-            "key": f'{body["id"]}_{body["exam_code"]}_{body["kind"]}_G_audio',
+            "key": f'{body["id"]}_{body["exam_code_new"]}_{body["kind"]}_G_audio',
             "link": body["G_audio"],
-            "timestamps": re.sub('）', ')', body["G_audio_time_split"].strip())
+            "timestamps": self.check_and_fix_time_format(body["G_audio_time_split"])
         }]
         for index in range(5):
             question_audios.append({
                 "field": f'Q_audio_{index+1}',
-                "key": f'{body["id"]}_{body["exam_code"]}_{body["kind"]}_Q_audio_{index+1}',
+                "key": f'{body["id"]}_{body["exam_code_new"]}_{body["kind"]}_Q_audio_{index+1}',
                 "link": body[f"Q_audio_{index+1}"],
-                "timestamps": re.sub('）', ')', body[f"Q_audio_{index+1}_time_split"].strip())
+                "timestamps": self.check_and_fix_time_format(body[f"Q_audio_{index+1}_time_split"])
             })
         
         for index in range(5):
             question_audios.append({
                 "field": f'A_audio_{index+1}',
-                "key": f'{body["id"]}_{body["exam_code"]}_{body["kind"]}_A_audio_{index+1}',
+                "key": f'{body["id"]}_{body["exam_code_new"]}_{body["kind"]}_A_audio_{index+1}',
                 "link": body[f"A_audio_{index+1}"],
-                "timestamps": re.sub('）', ')', body[f"A_audio_{index+1}_time_split"].strip())
+                "timestamps": self.check_and_fix_time_format(body[f"A_audio_{index+1}_time_split"])
             })
         
         question_audios_raw = [

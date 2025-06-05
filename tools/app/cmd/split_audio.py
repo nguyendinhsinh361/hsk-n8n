@@ -202,7 +202,7 @@ class EnhancedAudioSplitter(AudioSplitter):
 def extract_file_id_from_drive_link(drive_link):
     """
     Trích xuất ID file từ Google Drive link
-    
+    _timp
     :param drive_link: Link Google Drive
     :return: ID của file
     """
@@ -222,16 +222,30 @@ def extract_file_id_from_drive_link(drive_link):
     
     raise ValueError("Không thể trích xuất ID file từ link Google Drive")
 
-def download_from_drive(drive_link, output_path):
+def download_from_drive(drive_link, output_path, socket_timeout=300, max_attempts=3, max_chunk_attempts=3):
     """
     Tải file từ Google Drive sử dụng OAuth credentials
     
     :param drive_link: Link Google Drive
     :param output_path: Đường dẫn để lưu file
+    :param socket_timeout: Thời gian timeout cho socket (giây)
+    :param max_attempts: Số lần thử tải lại toàn bộ file
+    :param max_chunk_attempts: Số lần thử tải lại một chunk
     :return: Đường dẫn đến file đã tải
     """
+    # Import cần thiết
+    import socket
+    import time
+    from datetime import datetime
+    
+    def log_message(message):
+        """Ghi log với timestamp"""
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{timestamp}] {message}")
+    
     # Trích xuất ID file từ link
     file_id = extract_file_id_from_drive_link(drive_link)
+    log_message(f"Bắt đầu tải file với ID: {file_id}")
     
     # Thiết lập phạm vi quyền truy cập
     SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
@@ -247,35 +261,92 @@ def download_from_drive(drive_link, output_path):
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
+            log_message("Đã làm mới token hết hạn")
         else:
             # Sử dụng credentials.json để xác thực
+            log_message("Bắt đầu quá trình xác thực mới")
             flow = InstalledAppFlow.from_client_secrets_file(
                 'app/auth/credentials.json', SCOPES)
             creds = flow.run_local_server(port=0)
+            log_message("Xác thực hoàn tất")
         
         # Lưu credentials để sử dụng lần sau
         with open(token_path, 'wb') as token:
             pickle.dump(creds, token)
+            log_message("Đã lưu token mới")
     
     # Xây dựng service
     service = build('drive', 'v3', credentials=creds)
     
     # Tạo thư mục chứa file nếu chưa tồn tại
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    log_message(f"Đã tạo thư mục đích: {os.path.dirname(output_path)}")
     
-    # Tải file
-    request = service.files().get_media(fileId=file_id)
-    file_output_path = f"{output_path}{file_id}.mp3"
+    # Thiết lập timeout mặc định cho socket
+    original_timeout = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(socket_timeout)
+    log_message(f"Đã thiết lập socket timeout: {socket_timeout} giây")
     
-    with open(file_output_path, 'wb') as f:
-        downloader = MediaIoBaseDownload(f, request)
-        done = False
-        while not done:
-            status, done = downloader.next_chunk()
-            print(f"Đã tải {int(status.progress() * 100)}%")
-    
-    print(f"Đã tải file thành công: {file_output_path}")
-    return file_output_path
+    try:
+        # Tải file
+        request = service.files().get_media(fileId=file_id)
+        file_output_path = f"{output_path}{file_id}.mp3"
+        log_message(f"Đường dẫn file đích: {file_output_path}")
+        
+        # Thêm xử lý timeout và retry
+        download_attempts = 0
+        
+        while download_attempts < max_attempts:
+            try:
+                with open(file_output_path, 'wb') as f:
+                    downloader = MediaIoBaseDownload(f, request)
+                    done = False
+                    chunk_attempts = 0
+                    
+                    while not done:
+                        try:
+                            status, done = downloader.next_chunk()
+                            log_message(f"Đã tải {int(status.progress() * 100)}%")
+                            chunk_attempts = 0  # Reset counter on successful chunk
+                        except (TimeoutError, socket.timeout, socket.error) as timeout_err:
+                            # Xử lý lỗi timeout cụ thể
+                            chunk_attempts += 1
+                            log_message(f"Timeout khi tải chunk (lần {chunk_attempts}/{max_chunk_attempts}): {str(timeout_err)}")
+                            
+                            if chunk_attempts >= max_chunk_attempts:
+                                log_message("Đã vượt quá số lần thử lại cho chunk hiện tại, sẽ thử lại toàn bộ quá trình tải.")
+                                raise  # Re-raise để chuyển sang retry toàn bộ file
+                            
+                            # Chờ trước khi thử lại chunk
+                            wait_time = 2 ** chunk_attempts
+                            log_message(f"Chờ {wait_time} giây trước khi thử lại chunk...")
+                            time.sleep(wait_time)
+                            continue
+                
+                # Nếu tải thành công, thoát vòng lặp retry
+                log_message(f"Đã tải file thành công: {file_output_path}")
+                return file_output_path
+            
+            except Exception as e:
+                download_attempts += 1
+                log_message(f"Lỗi khi tải file (lần {download_attempts}/{max_attempts}): {str(e)}")
+                
+                # Nếu còn lần thử, chờ một chút trước khi thử lại
+                if download_attempts < max_attempts:
+                    wait_time = 2 ** download_attempts  # Backoff strategy
+                    log_message(f"Chờ {wait_time} giây trước khi thử lại...")
+                    time.sleep(wait_time)
+                else:
+                    log_message(f"Đã thử {max_attempts} lần, không thể tải file.")
+                    raise
+        
+        # Nếu tất cả các lần thử đều thất bại
+        raise Exception(f"Không thể tải file sau {max_attempts} lần thử")
+        
+    finally:
+        # Khôi phục giá trị timeout ban đầu
+        socket.setdefaulttimeout(original_timeout)
+        log_message("Đã khôi phục cấu hình socket ban đầu")
 
 def download_from_drive_with_service_account(drive_link, output_path):
     """

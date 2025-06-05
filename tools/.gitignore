@@ -50,6 +50,8 @@ __pycache__/
 .venv
 .env
 data
+data_backup_exam_v1
+data_backup_exam_v2
 auth
 /n8n
 n8n-*

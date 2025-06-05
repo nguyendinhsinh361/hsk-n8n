@@ -375,7 +375,7 @@ def get_all_files(folder_path):
     try:
         # Trả về danh sách đầy đủ các file (bao gồm đường dẫn)
         files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
-        print(files)
+        # print(files)
         return [file for file in files if ".DS_Store" not in file]
     except Exception as e:
         print(f"Lỗi: {e}")
