@@ -309,8 +309,19 @@ class DataService:
         exam_result_merge_hsk5 = []
         exam_result_merge_hsk6 = []
         
-        id_question_start = 61993
-        id_exam_start = 2459
+        ID_QUESTION_START_PHARSE_1 = 61993
+        ID_EXAM_START_PHARSE_1 = 2459
+        COUNT_INDEX_EXAM_PHARSE_1 = 1
+        
+        ID_QUESTION_START_PHARSE_2 = 64563
+        ID_EXAM_START_PHARSE_2 = 2619
+        COUNT_INDEX_EXAM_PHARSE_2 = 11
+        
+        
+        id_question_start = ID_QUESTION_START_PHARSE_2
+        id_exam_start = 2619
+        COUNT_INDEX_EXAM = COUNT_INDEX_EXAM_PHARSE_2
+
         
         TYPE_EXAM_PRO = 1
         TYPE_EXAM_SKILL_PRO = 2
@@ -325,14 +336,14 @@ class DataService:
             data_exam = common.get_raw_data(f"app/data/exams_hsk3/{id_question}.json")
             id_exam_start = id_exam_start + 1
             updated_parts = []
-            data_exam["title"] = f"Test {index_count+1} (New)"
+            data_exam["title"] = f"Test {index_count+COUNT_INDEX_EXAM} (New)"
             data_exam["title_lang"] = {
-                "vi": f"Đề thi {index_count+1} (Mới)",
-                "en": f"Test {index_count+1} (New)",
-                "ko": f"{index_count+1} 번 시험지 (새로운)",
-                "ja": f"テスト {index_count+1} (新しい)",
-                "fr": f"Test {index_count+1} (Nouveau)",
-                "ru": f"Тест {index_count+1} (Новый)"
+                "vi": f"Đề thi {index_count+COUNT_INDEX_EXAM} (Mới)",
+                "en": f"Test {index_count+COUNT_INDEX_EXAM} (New)",
+                "ko": f"{index_count+COUNT_INDEX_EXAM} 번 시험지 (새로운)",
+                "ja": f"テスト {index_count+COUNT_INDEX_EXAM} (新しい)",
+                "fr": f"Test {index_count+COUNT_INDEX_EXAM} (Nouveau)",
+                "ru": f"Тест {index_count+COUNT_INDEX_EXAM} (Новый)"
             }
             data_exam["type"] = TYPE_EXAM
             data_exam["sequence"] = 0
@@ -406,14 +417,14 @@ class DataService:
             data_exam = common.get_raw_data(f"app/data/exams_hsk4/{id_question}.json")
             id_exam_start = id_exam_start + 1
             updated_parts = []
-            data_exam["title"] = f"Test {index_count+1} (New)"
+            data_exam["title"] = f"Test {index_count+COUNT_INDEX_EXAM} (New)"
             data_exam["title_lang"] = {
-                "vi": f"Đề thi {index_count+1} (Mới)",
-                "en": f"Test {index_count+1} (New)",
-                "ko": f"{index_count+1} 번 시험지 (새로운)",
-                "ja": f"テスト {index_count+1} (新しい)",
-                "fr": f"Test {index_count+1} (Nouveau)",
-                "ru": f"Тест {index_count+1} (Новый)"
+                "vi": f"Đề thi {index_count+COUNT_INDEX_EXAM} (Mới)",
+                "en": f"Test {index_count+COUNT_INDEX_EXAM} (New)",
+                "ko": f"{index_count+COUNT_INDEX_EXAM} 번 시험지 (새로운)",
+                "ja": f"テスト {index_count+COUNT_INDEX_EXAM} (新しい)",
+                "fr": f"Test {index_count+COUNT_INDEX_EXAM} (Nouveau)",
+                "ru": f"Тест {index_count+COUNT_INDEX_EXAM} (Новый)"
             }
             data_exam["type"] = TYPE_EXAM
             data_exam["sequence"] = 0
@@ -486,14 +497,14 @@ class DataService:
             data_exam = common.get_raw_data(f"app/data/exams_hsk5/{id_question}.json")
             id_exam_start = id_exam_start + 1
             updated_parts = []
-            data_exam["title"] = f"Test {index_count+1} (New)"
+            data_exam["title"] = f"Test {index_count+COUNT_INDEX_EXAM} (New)"
             data_exam["title_lang"] = {
-                "vi": f"Đề thi {index_count+1} (Mới)",
-                "en": f"Test {index_count+1} (New)",
-                "ko": f"{index_count+1} 번 시험지 (새로운)",
-                "ja": f"テスト {index_count+1} (新しい)",
-                "fr": f"Test {index_count+1} (Nouveau)",
-                "ru": f"Тест {index_count+1} (Новый)"
+                "vi": f"Đề thi {index_count+COUNT_INDEX_EXAM} (Mới)",
+                "en": f"Test {index_count+COUNT_INDEX_EXAM} (New)",
+                "ko": f"{index_count+COUNT_INDEX_EXAM} 번 시험지 (새로운)",
+                "ja": f"テスト {index_count+COUNT_INDEX_EXAM} (新しい)",
+                "fr": f"Test {index_count+COUNT_INDEX_EXAM} (Nouveau)",
+                "ru": f"Тест {index_count+COUNT_INDEX_EXAM} (Новый)"
             }
             data_exam["type"] = TYPE_EXAM
             data_exam["sequence"] = 0
@@ -566,14 +577,14 @@ class DataService:
             data_exam = common.get_raw_data(f"app/data/exams_hsk6/{id_question}.json")
             id_exam_start = id_exam_start + 1
             updated_parts = []
-            data_exam["title"] = f"Test {index_count+1} (New)"
+            data_exam["title"] = f"Test {index_count+COUNT_INDEX_EXAM} (New)"
             data_exam["title_lang"] = {
-                "vi": f"Đề thi {index_count+1} (Mới)",
-                "en": f"Test {index_count+1} (New)",
-                "ko": f"{index_count+1} 번 시험지 (새로운)",
-                "ja": f"テスト {index_count+1} (新しい)",
-                "fr": f"Test {index_count+1} (Nouveau)",
-                "ru": f"Тест {index_count+1} (Новый)"
+                "vi": f"Đề thi {index_count+COUNT_INDEX_EXAM} (Mới)",
+                "en": f"Test {index_count+COUNT_INDEX_EXAM} (New)",
+                "ko": f"{index_count+COUNT_INDEX_EXAM} 번 시험지 (새로운)",
+                "ja": f"テスト {index_count+COUNT_INDEX_EXAM} (新しい)",
+                "fr": f"Test {index_count+COUNT_INDEX_EXAM} (Nouveau)",
+                "ru": f"Тест {index_count+COUNT_INDEX_EXAM} (Новый)"
             }
             data_exam["type"] = TYPE_EXAM
             data_exam["sequence"] = 0
